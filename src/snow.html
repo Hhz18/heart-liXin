@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=GBK">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        #box {
+            width: 100vw;
+            height: 100vh;
+            padding: 3px;
+            position: absolute;
+            background: #ffffff;
+        }
+    </style>
+</head>
+
+<body>
+<div id="box">
+
+</div>
+</body>
+
+<script>
+    (function () {
+        var screenWidth = screen.availWidth;
+        var screenHeight = screen.availHeight;
+        var speed = 1;
+
+        function Snow(size, downSize) {
+            this.box = document.getElementById("box");
+            this.size = size;
+            this.downSize = downSize || 10;
+            this.item = [];
+            this.init();
+            this.start();
+        }
+
+        Snow.prototype.getRandomThings = function (type) {
+            var res;
+            if (type == 'left') {
+                res = Math.round(Math.random() * (screenWidth - 30 - 10)) + 10;
+                Math.random() > 0.8 ? (res = -res) : null;
+            } else if (type == 'top') {
+                res = -(Math.round(Math.random() * (50 - 40)) + 40);
+            } else if (type == 'incre') {
+                res = Math.random() * (4 - 1) + 1;
+            } else if (type == 'increLeft') {
+                res = Math.random() * (0.8 - 0.5) + 0.5;
+            } else {
+                res = Math.round(Math.random() * (30 - 10)) + 10;
+            }
+            return res;
+        }
+
+        Snow.prototype.init = function () {
+            this.box.style.width = screenWidth + 'px';
+            this.box.style.height = screenHeight + 'px';
+            var fragment = document.createDocumentFragment();
+            for (var i = 0; i < this.size; i++) {
+                var left = this.getRandomThings('left');
+                var top = this.getRandomThings('top');
+                var snowSize = this.getRandomThings('size');
+                var snow = document.createElement("div");
+                // 修改颜色设置
+                snow.style.cssText = 'position:absolute;color:#D4B8B4;';
+                snow.style['font-size'] = snowSize + 'px';
+                snow.style.left = left + 'px';
+                snow.style.top = top + 'px';
+                snow.innerHTML = '&#10052';
+                this.item.push(snow);
+                fragment.appendChild(snow);
+            }
+            box.appendChild(fragment);
+        }
+
+        Snow.prototype.start = function () {
+            var that = this;
+            var num = 0;
+            for (var i = 0; i < this.size; i++) {
+                var snow = this.item[i];
+                if ((i + 1) % this.downSize == 0) {
+                    num++;
+                }
+                (function (s, n) {
+                    setTimeout(function () {
+                        that.doStart(s);
+                    }, 1000 * n)
+                })(snow, num)
+            }
+        }
+
+        Snow.prototype.doStart = function (snow) {
+            var that = this;
+            (function (s) {
+                var increTop = that.getRandomThings('incre');
+                var increLeft = that.getRandomThings('increLeft');
+                var x = parseInt(getStyle(s, 'left')), y = parseInt(getStyle(s, 'top'));
+
+                if (s.timmer) return;
+                s.timmer = setInterval(function () {
+                    if (y > (screenHeight - 5) || x > (screenWidth - 30)) {
+                        increTop = that.getRandomThings('incre');
+                        increLeft = that.getRandomThings('increLeft');
+                        var left = that.getRandomThings('left');
+                        var top = that.getRandomThings('top');
+                        var snowSize = that.getRandomThings('size');
+                        s.style.left = left + 'px';
+                        s.style.top = top + 'px';
+                        s.style['font-size'] = snowSize + 'px';
+                        y = top;
+                        x = left;
+                        return;
+                    }
+
+                    // 修改为匀速下落（移除随机速度变化）
+                    x += increLeft;
+                    y += increTop;
+
+                    s.style.left = x + 'px';
+                    s.style.top = y + 'px';
+                }, speed);
+            })(snow)
+        }
+
+        function getStyle(obj, prop) {
+            var prevComputedStyle = document.defaultView ? document.defaultView.getComputedStyle(obj, null) : obj.currentStyle;
+            return prevComputedStyle[prop];
+        }
+
+        new Snow(200, 20);
+    })()
+</script>
+
+</html>

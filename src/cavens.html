@@ -1,0 +1,646 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>canvas 心</title>
+    <style>
+        /*音乐播放器*/
+        #musicControls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+        }
+
+        #musicButton, #addMusicButton {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.9);
+            color: #ea8f9d;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        #musicButton:hover, #addMusicButton:hover {
+            background: rgba(234,143,157,0.9);
+            color: white;
+            transform: translateY(-2px);
+        }
+        #playlist {
+            position: fixed;
+            top: 120px;  /* 根据按钮高度调整 */
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            width: 250px;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .playlist-item {
+            padding: 5px;
+            margin: 5px 0;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .playlist-item:hover {
+            background: rgba(234,143,157,0.1);
+        }
+        .playlist-item.playing {
+            background-color: rgba(234,143,157,0.3);
+        }
+
+        .playlist-item button {
+            margin-left: 10px;
+            padding: 2px 8px;
+            border: none;
+            background-color: #ea8f9d;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        /*<!--雪花 -->*/
+        /* 默认日间模式样式 */
+        html, body {
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            background: #000;
+
+            background-image: url('picture/background.png'); /* 替换为你的背景图片路径 */
+            background-size: cover; /* 使背景图片覆盖整个屏幕 */
+            background-position: center; /* 将背景图片居中 */
+            background-repeat: no-repeat; /* 防止背景图片重复 */
+        }
+        canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8; /* 设置canvas的透明度为80% */
+        }
+        #musicButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+        }
+        #box {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.7;
+            pointer-events: none; /* 防止雪花遮挡其他元素 */
+        }
+        /* 夜间模式样式 */
+        body.night-mode {
+            background-color: #121212; /* 深色背景 */
+            color: #fff; /* 文字颜色 */
+        }
+
+        body.night-mode canvas {
+            opacity: 0.95; /* 调整canvas透明度 */
+        }
+
+        body.night-mode #box {
+            opacity: 0.8; /* 调整雪花透明度 */
+        }
+    </style>
+</head>
+<body>
+<canvas id="pinkboard"></canvas>
+<div id="box">
+
+</div>
+<!-- 添加雪花的容器 -->
+<!--<button id="addMusicButton" onclick="document.getElementById('musicInput').click()">-->
+<!--    添加歌曲-->
+
+<!--<div id="musicControls">-->
+<!--    <button id="musicButton" onclick="toggleMusic()">▶️ 播放</button>-->
+<!--    <button id="addMusicButton" onclick="document.getElementById('musicInput').click()">-->
+<!--        ➕ 添加歌曲-->
+<!--    </button>-->
+<!--</div>-->
+<!--<input type="file" id="musicInput" accept="audio/*" multiple hidden>-->
+<!--<div id="playlist"></div>-->
+
+<!-- 修改音乐控制部分 -->
+<!--<div id="musicControls" style="top: 20px; right: 20px;">-->
+<!--    <button id="musicButton"-->
+<!--            style="display: block; margin-bottom: 60px;">▶️ 播放</button>-->
+<!--    <button id="addMusicButton"-->
+<!--            style="position: absolute; top: 80px; right: 0;">-->
+<!--        ➕ 添加歌曲-->
+<!--    </button>-->
+<!--</div>-->
+
+<div id="musicControls" style="top: 20px; right: 20px;">
+    <button id="musicButton" onclick="toggleMusic()">▶️ 播放</button>
+    <br>
+    <br>
+    <button id="addMusicButton" onclick="document.getElementById('musicInput').click()">➕ 添加歌曲</button>
+</div>
+<input type="file" id="musicInput" accept="audio/*" multiple hidden>
+
+<!--<div id="playlist" style="top: 140px; right: 20px;"></div>-->
+<!--<audio id="backgroundMusic"></audio>-->
+
+
+
+<script>
+    //切换日间夜间代码
+    function toggleNightMode() {
+        const body = document.body;
+        const isNightMode = body.classList.contains('night-mode');
+
+        if (isNightMode) {
+            body.classList.add('night-mode'); // 添加夜间模式类
+            document.getElementById('nightModeButton').innerText = '切换日间模式';
+        } else {
+            body.classList.remove('night-mode'); // 移除夜间模式类
+            document.getElementById('nightModeButton').innerText = '切换夜间模式';
+        }
+    }
+    // 雪花代码
+    var screenWidth = screen.availWidth; // 获取屏幕宽度
+    var screenHeight = screen.availHeight; // 获取屏幕高度
+    var speed = 1; // 雪花下落的速度
+
+    // function Snow(size, downSize) {
+    //     this.box = document.getElementById("box"); // 获取容器元素
+    //     this.size = size; // 雪花数量
+    //     this.downSize = downSize || 10; // 每次落下的雪花数量，默认为10个
+    //     this.item = []; // 雪花元素数组
+    //     this.init(); // 初始化
+    //     this.start(); // 开始下雪
+    // }
+    // 优化后的雪花代码
+    (function() {
+        const screenWidth = screen.availWidth;
+        const screenHeight = screen.availHeight;
+
+        // 定义四种雪花颜色
+        const snowColors = [
+            'rgb(220,182,24)',
+            'rgb(198, 204, 192)',
+            'rgb(132,179,148)',
+            'rgb(244,211,210)'
+        ];
+
+        function Snow(size, downSize) {
+            this.box = document.getElementById("box");
+            this.size = size;
+            this.downSize = downSize || 30;
+            this.item = [];
+            this.init();
+            this.start();
+        }
+
+        Snow.prototype.getRandomThings = function(type) {
+            switch(type) {
+                case 'color':
+                    return snowColors[Math.floor(Math.random() * snowColors.length)];
+                case 'left':
+                    let res = Math.random() * (screenWidth - 40) + 20;
+                    return Math.random() > 0.8 ? -res : res;
+                case 'top':
+                    return -(Math.random() * screenHeight * 0.5 + 100);
+                case 'incre':
+                    // return 1.2; // 固定下落速度
+                    return Math.random() * 0.8 + 1.0;
+                case 'increLeft':
+                    return 0.6; // 固定横向速度
+                case 'size':
+                    return Math.random() * 20 + 10;
+                default:
+                    return 0;
+            }
+        }
+
+        Snow.prototype.init = function() {
+            const fragment = document.createDocumentFragment();
+            for(let i = 0; i < this.size; i++) {
+                const snow = document.createElement("div");
+                snow.style.cssText = `
+                    position: absolute;
+                    color: ${this.getRandomThings('color')};  // 修改颜色设置
+                    font-size: ${this.getRandomThings('size')}px;
+                    left: ${this.getRandomThings('left')}px;
+                    top: ${this.getRandomThings('top')}px;
+                    will-change: transform;
+                    pointer-events: none;
+                `;
+                snow.innerHTML = '&#10052';
+                this.item.push(snow);
+                fragment.appendChild(snow);
+            }
+            this.box.appendChild(fragment);
+        }
+
+        Snow.prototype.start = function() {
+            this.item.forEach((snow, index) => {
+                setTimeout(() => this.animateSnow(snow), (index % this.downSize) * 50);
+            });
+        }
+
+        Snow.prototype.animateSnow = function(snow) {
+            let x = parseFloat(snow.style.left);
+            let y = parseFloat(snow.style.top);
+            const dx = this.getRandomThings('increLeft');
+            const dy = this.getRandomThings('incre');
+
+            const animate = () => {
+                if (y > screenHeight || x > screenWidth) {
+                    x = this.getRandomThings('left');
+                    y = this.getRandomThings('top');
+                    snow.style.fontSize = this.getRandomThings('size') + 'px';
+                }
+
+                x += dx;
+                y += dy;
+
+                snow.style.transform = `translate(${x}px, ${y}px)`;
+                requestAnimationFrame(animate);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        new Snow(600, 30); // 优化后的雪花数量和下落批次
+    })();
+
+
+
+    var settings = {
+        particles: {
+            length: 1500, // 最大颗粒量
+            duration: 3, // 过渡时间
+            velocity: 90, // 粒子速度
+            effect: -0.4, // 效果控制
+            size: 30 // 像素大小
+        },
+        snowflakes: {
+            length: 200, // 雪花数量
+            size: 5, // 雪花大小
+            velocity: 1, // 雪花下落速度
+            wind: 0.2 // 风的强度（水平偏移）
+        }
+    };
+
+    //音乐播放
+    let playlist = [];
+    let currentTrackIndex = -1;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('musicInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                if(file.type.startsWith('audio/')) {
+                    playlist.push({
+                        name: file.name,
+                        url: URL.createObjectURL(file)
+                    });
+                }
+            });
+            if(playlist.length > 0 && currentTrackIndex === -1) {
+                currentTrackIndex = 0;
+                playTrack(0);
+            }
+            updatePlaylist();
+        });
+    });
+    function updatePlaylist() {
+        const playlistDiv = document.getElementById('playlist');
+        playlistDiv.innerHTML = '<h4>播放列表</h4>';
+
+        playlist.forEach((track, index) => {
+            const item = document.createElement('div');
+            item.className = `playlist-item ${index === currentTrackIndex ? 'playing' : ''}`;
+            item.innerHTML = `
+            <span>${track.name}</span>
+            <button onclick="playTrack(${index})"
+                    style="background:none;border:none;color:#ea8f9d;cursor:pointer;">
+                ${index === currentTrackIndex ? '⏸' : '▶'}
+            </button>
+        `;
+            playlistDiv.appendChild(item);
+        });
+    }
+
+    function playTrack(index) {
+        currentTrackIndex = index;
+        const music = document.getElementById('backgroundMusic');
+        music.src = playlist[index].url;
+        music.play();
+        isMusicPlaying = true;
+        updatePlaylist();
+        document.getElementById('musicButton').innerHTML =
+            '<img src="picture/music_pause.png" alt="Pause" style="width: 50px; height: 50px;">';
+    }
+
+    function toggleMusic() {
+        const music = document.getElementById('backgroundMusic');
+        const button = document.getElementById('musicButton');
+
+        if (playlist.length === 0) {
+            alert('请先添加歌曲');
+            return;
+        }
+
+        if (!music.src) playTrack(0);
+
+        if (isMusicPlaying) {
+            music.pause();
+            button.innerHTML = '<img src="picture/music.png" alt="Music" style="width: 50px; height: 50px;">';
+        } else {
+            music.play();
+            button.innerHTML = '<img src="picture/music_pause.png" alt="Pause" style="width: 50px; height: 50px;">';
+        }
+        isMusicPlaying = !isMusicPlaying;
+    }
+
+
+
+    // 定义颜色过渡函数
+    function interpolateColor(color1, color2, factor) {
+        return {
+            r: Math.round(color1.r + (color2.r - color1.r) * factor),
+            g: Math.round(color1.g + (color2.g - color1.g) * factor),
+            b: Math.round(color1.b + (color2.b - color1.b) * factor)
+        };
+    }
+
+
+    // 定义颜色数组
+    const colors = [
+        {r:139, g:0, b:0},     // DarkRed
+        {r:220 ,g:20 ,b:60},
+        {r:128, g:0, b:32},    // Burgundy-like
+        {r:139, g:0, b:0}      // 回到第一个颜色形成循环
+    ];
+    // 这个颜色更深沉
+    // const colors = [
+    //     {r:220 ,g:20 ,b:60},
+    //     {r:139, g:0, b:0},     // DarkRed
+    //     {r:128, g:0, b:32},    // Burgundy-like
+    //     {r:139, g:0, b:0}      // 回到第一个颜色形成循环
+    // ];
+
+
+
+    // 点的样式设置
+    var Point = (function () {
+        function Point(x, y) {
+            this.x = (typeof x !== 'undefined') ? x : 0;
+            this.y = (typeof y !== 'undefined') ? y : 0;
+        }
+        Point.prototype.clone = function () {
+            return new Point(this.x, this.y);
+        };
+        Point.prototype.length = function (length) {
+            if (typeof length == 'undefined')
+                return Math.sqrt(this.x * this.x + this.y * this.y);
+            this.normalize();
+            this.x *= length;
+            this.y *= length;
+            return this;
+        };
+        Point.prototype.normalize = function () {
+            var length = this.length();
+            this.x /= length;
+            this.y /= length;
+            return this;
+        };
+        return Point;
+    })();
+
+    // 粒子类
+    var Particle = (function () {
+        function Particle() {
+            this.position = new Point();
+            this.velocity = new Point();
+            this.acceleration = new Point();
+            this.age = 0;
+        }
+        Particle.prototype.initialize = function (x, y, dx, dy) {
+            this.position.x = x;
+            this.position.y = y;
+            this.velocity.x = dx;
+            this.velocity.y = dy;
+            this.acceleration.x = dx * settings.particles.effect;
+            this.acceleration.y = dy * settings.particles.effect;
+            this.age = 0;
+        };
+        Particle.prototype.update = function (deltaTime) {
+            this.position.x += this.velocity.x * deltaTime;
+            this.position.y += this.velocity.y * deltaTime;
+            this.velocity.x += this.acceleration.x * deltaTime;
+            this.velocity.y += this.acceleration.y * deltaTime;
+            this.age += deltaTime;
+        };
+        Particle.prototype.draw = function (context) {
+            function ease(t) {
+                return (--t) * t * t + 1;
+            }
+            var size = settings.particles.size * ease(this.age / settings.particles.duration);
+            context.globalAlpha = 1 - this.age / settings.particles.duration;
+
+            // 计算当前颜色
+            var progress = this.age / settings.particles.duration;
+            var stage = Math.floor(progress * (colors.length - 1));
+            var factor = progress * (colors.length - 1) - stage;
+
+            var color1 = colors[stage % colors.length];
+            var color2 = colors[(stage + 1) % colors.length];
+            var currentColor = interpolateColor(color1, color2, factor);
+
+            context.fillStyle = `rgba(${currentColor.r},${currentColor.g},${currentColor.b},${context.globalAlpha})`;
+
+            context.beginPath();
+            context.arc(this.position.x, this.position.y, size / 2, 0, Math.PI * 2);
+            context.fill();
+        };
+        return Particle;
+    })();
+
+    // 雪花类
+    var Snowflake = (function () {
+        function Snowflake() {
+            this.position = new Point();
+            this.velocity = new Point();
+            this.size = settings.snowflakes.size;
+        }
+        Snowflake.prototype.initialize = function (canvasWidth, canvasHeight) {
+            this.position.x = Math.random() * canvasWidth; // 使用 canvasWidth
+            this.position.y = -this.size; // 从屏幕顶部开始
+            this.velocity.x = (Math.random() - 0.5) * settings.snowflakes.wind;
+            this.velocity.y = settings.snowflakes.velocity;
+        };
+        Snowflake.prototype.update = function (deltaTime) {
+            this.position.x += this.velocity.x * deltaTime;
+            this.position.y += this.velocity.y * deltaTime;
+
+            // 如果雪花超出屏幕底部，重置位置
+            // if (this.position.y > canvas.height) {
+            //     this.initialize(); // 这里需要传递 canvas 尺寸
+            // }
+        };
+        Snowflake.prototype.draw = function (context) {
+            context.fillStyle = "white";
+            context.beginPath();
+            context.arc(this.position.x, this.position.y, this.size, 0, Math.PI * 2);
+            context.fill();
+        };
+        return Snowflake;
+    })();
+
+
+    // 粒子池
+    var ParticlePool = (function () {
+        var particles, firstActive = 0, firstFree = 0, duration = settings.particles.duration;
+        function ParticlePool(length) {
+            particles = new Array(length);
+            for (var i = 0; i < particles.length; i++) particles[i] = new Particle();
+        }
+        ParticlePool.prototype.add = function (x, y, dx, dy) {
+            particles[firstFree].initialize(x, y, dx, dy);
+            firstFree++;
+            if (firstFree === particles.length) firstFree = 0;
+            if (firstActive === firstFree) firstActive++;
+            if (firstActive === particles.length) firstActive = 0;
+        };
+        ParticlePool.prototype.update = function (deltaTime) {
+            var i;
+            if (firstActive < firstFree) {
+                for (i = firstActive; i < firstFree; i++) particles[i].update(deltaTime);
+            }
+            if (firstFree < firstActive) {
+                for (i = firstActive; i < particles.length; i++) particles[i].update(deltaTime);
+                for (i = 0; i < firstFree; i++) particles[i].update(deltaTime);
+            }
+            while (particles[firstActive].age >= duration && firstActive != firstFree) {
+                firstActive++;
+                if (firstActive === particles.length) firstActive = 0;
+            }
+        };
+        ParticlePool.prototype.draw = function (context) {
+            if (firstActive < firstFree) {
+                for (var i = firstActive; i < firstFree; i++) particles[i].draw(context);
+            }
+            if (firstFree < firstActive) {
+                for (var i = firstActive; i < particles.length; i++) particles[i].draw(context);
+                for (var i = 0; i < firstFree; i++) particles[i].draw(context);
+            }
+        };
+        return ParticlePool;
+    })();
+
+    // 雪花池
+    var SnowflakePool = (function () {
+        var snowflakes;
+        function SnowflakePool(length, canvasWidth, canvasHeight) {
+            snowflakes = new Array(length);
+            for (var i = 0; i < snowflakes.length; i++) {
+                snowflakes[i] = new Snowflake();
+                snowflakes[i].initialize(canvasWidth, canvasHeight); // 传递 canvas 尺寸
+            }
+        }
+        SnowflakePool.prototype.update = function (deltaTime, canvasWidth, canvasHeight) {
+            for (var i = 0; i < snowflakes.length; i++) {
+                snowflakes[i].update(deltaTime);
+                if (snowflakes[i].position.y > canvasHeight) { // 检查是否超出屏幕
+                    snowflakes[i].initialize(canvasWidth, canvasHeight); // 重置位置
+                }
+            }
+        };
+        SnowflakePool.prototype.draw = function (context) {
+            for (var i = 0; i < snowflakes.length; i++) {
+                snowflakes[i].draw(context);
+            }
+        };
+        return SnowflakePool;
+    })();
+
+
+    // 主程序
+    (function (canvas) {
+        var context = canvas.getContext('2d'),
+            particles = new ParticlePool(settings.particles.length),
+
+            snowflakes = new SnowflakePool(settings.snowflakes.length,canvas.width,canvas.height), // 实例化 SnowflakePool
+
+            particleRate = settings.particles.length / settings.particles.duration,
+            time;
+
+        function pointOnHeart(t) {
+            return new Point(
+                160 * Math.pow(Math.sin(t), 3),
+                130 * Math.cos(t) - 50 * Math.cos(2 * t) - 20 * Math.cos(3 * t) - 10 * Math.cos(4 * t) + 25
+            );
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            var newTime = new Date().getTime() / 1000,
+                deltaTime = newTime - (time || newTime);
+            time = newTime;
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 更新雪花时传递 canvas 尺寸
+            snowflakes.update(deltaTime, canvas.width, canvas.height);
+
+            var amount = particleRate * deltaTime;
+            for (var i = 0; i < amount; i++) {
+                var pos = pointOnHeart(Math.PI - 2 * Math.PI * Math.random());
+                var dir = pos.clone().length(settings.particles.velocity);
+                particles.add(canvas.width / 2 + pos.x, canvas.height / 2 - pos.y, dir.x, -dir.y);
+            }
+
+
+            // 绘制文本
+            drawText(context);
+
+            particles.update(deltaTime);
+            particles.draw(context);
+
+
+        }
+
+        //文本函数
+        function drawText(context) {
+            context.save();
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            // context.font = "40px Arial";
+            context.font = "italic 40px 'Comic Sans MS', cursive"; // 斜体，字体为 Comic Sans MS
+            context.fillStyle = "rgb(234,143,157)"; // 粉色
+            context.fillText("祝宝李鑫宝天天开心", canvas.width / 2, canvas.height / 2);
+            context.restore();
+        }
+
+        function onResize() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+        window.onresize = onResize;
+        setTimeout(function () {
+            onResize();
+            render();
+        }, 10);
+    })(document.getElementById('pinkboard'));
+</script>
+</body>
+
+</html>
+
+
